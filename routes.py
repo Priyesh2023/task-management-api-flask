@@ -14,7 +14,7 @@ def register_routes(app):
     # Helper: Check Admin Role
     # -------------------------
     def is_admin():
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         return user and user.role == "admin"
 
@@ -219,7 +219,9 @@ def register_routes(app):
         return jsonify({"msg": "Task Created"})
 
     # -------------------------
-    # Update Task (Admin Only)
+    # Update Task
+    # Admin = any task
+    # User = only assigned task
     # -------------------------
     @app.route('/tasks/<int:id>', methods=['PUT'])
     @jwt_required()
@@ -251,10 +253,15 @@ def register_routes(app):
           200:
             description: Task Updated
         """
-        if not is_admin():
-            return jsonify({"msg": "Admin only"}), 403
-
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
         task = Task.query.get_or_404(id)
+
+        # Admin sab update karega
+        # User sirf assigned task update karega
+        if user.role != "admin" and task.assigned_to != user.id:
+            return jsonify({"msg": "Not allowed"}), 403
+
         data = request.get_json()
 
         task.title = data.get("title", task.title)
